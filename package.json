@@ -8,6 +8,7 @@
     "chat": "tsx scripts/chat.ts",
     "setup": "tsx scripts/setup.ts",
     "validate:config": "tsx scripts/validate-config.ts",
+    "wire-number": "tsx scripts/wire-number.ts",
     "test": "vitest run",
     "test:personas": "tsx scripts/personas.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json && tsc -p test/tsconfig.json",

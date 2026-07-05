@@ -26,11 +26,14 @@ pnpm run deploy           # validates configs, then wrangler deploy
 
 ## Wire up Twilio
 
-1. Buy a Twilio number and set the three secrets (`pnpm run setup --remote` prompts, or `wrangler secret put TWILIO_ACCOUNT_SID` etc.).
-2. In the Twilio console, point the number at your deployed Worker:
-   - **Voice → A call comes in**: `https://<your-worker>/twiml/voice` (HTTP POST). This rings the owner's phone (`business.ownerNotify.phone` from config) for 15 seconds; a missed call fires the instant text-back.
-   - **Messaging → A message comes in**: `https://<your-worker>/webhook/sms` (HTTP POST).
-3. Have the business set conditional call forwarding (busy/no-answer) from their real line to the Twilio number — or publish the Twilio number directly.
+1. Pick a number type — **read [docs/COMPLIANCE.md](docs/COMPLIANCE.md) first**: US carriers block business SMS until the number is registered, and the wrong registration path costs real money. TL;DR: toll-free for demos, local 10DLC under the client's EIN for production.
+2. Buy the number and set the three secrets (`pnpm run setup --remote` prompts, or `wrangler secret bulk`).
+3. Point the number at your deployed Worker:
+   ```sh
+   pnpm run wire-number +1XXXXXXXXXX https://<your-worker>.workers.dev
+   ```
+   This sets Voice → `/twiml/voice` (rings the owner from config for 15s; a missed call fires the instant text-back) and Messaging → `/webhook/sms`. Swapping to a different number later is this same command plus updating the `TWILIO_NUMBER` secret.
+4. Have the business set conditional call forwarding (busy/no-answer) from their real line to the Twilio number — or publish the Twilio number directly.
 
 All Twilio webhooks are signature-validated (`X-Twilio-Signature`); requests that don't verify get a 403. Non-emergency outbound is held during config `quietHours` and delivered when the window ends; emergencies, STOP confirmations, HELP responses, and owner alerts always send immediately.
 
@@ -54,5 +57,6 @@ The schema is `src/config/schema.ts` — every business-specific knob lives ther
 | `pnpm test:personas` | LLM-played callers against the real engine + model; transcripts + auto-grades in `test-output/` |
 | `pnpm run setup` | local D1 schema + `.dev.vars` scaffold (`--remote` for cloud setup + secrets) |
 | `pnpm validate:config` | validate all `verticals/*.json` |
+| `pnpm run wire-number` | point a Twilio number's voice/SMS webhooks at the deployed Worker |
 | `pnpm typecheck` | typecheck worker + scripts |
 | `pnpm run deploy` | validate configs, then deploy |
