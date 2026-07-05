@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+.dev.vars
+.claude/settings.local.json
+dist/
+test-output/
+worker-configuration.d.ts

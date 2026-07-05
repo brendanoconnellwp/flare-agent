@@ -1,0 +1,16 @@
+# Local secrets for `wrangler dev`. Copy to .dev.vars (gitignored) and fill in.
+# Production values are set with `wrangler secret put <NAME>` (pnpm run setup --remote prompts for these).
+
+# Lets `pnpm chat` bypass Twilio signature validation. Local dev only — never
+# set this in production.
+ALLOW_SIMULATOR="true"
+
+# Twilio (not needed until M4 — the simulator covers M0–M3)
+TWILIO_ACCOUNT_SID=""
+TWILIO_AUTH_TOKEN=""
+TWILIO_NUMBER=""
+
+# AI Gateway (not needed until M2)
+AI_GATEWAY_ACCOUNT_ID=""
+AI_GATEWAY_ID=""
+AI_GATEWAY_TOKEN=""

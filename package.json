@@ -1,0 +1,35 @@
+{
+  "name": "missed-call-emergency-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "chat": "tsx scripts/chat.ts",
+    "setup": "tsx scripts/setup.ts",
+    "validate:config": "tsx scripts/validate-config.ts",
+    "test": "vitest run",
+    "test:personas": "tsx scripts/personas.ts",
+    "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json && tsc -p test/tsconfig.json",
+    "deploy": "pnpm validate:config && wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.8.3",
+    "zod": "^3.25.67"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.12.21",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.6",
+    "wrangler": "^4.22.0"
+  }
+}

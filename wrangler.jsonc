@@ -1,0 +1,40 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "missed-call-agent",
+  "main": "src/index.ts",
+  // Highest date supported by the vitest-pool-workers runtime, so dev, test,
+  // and production run identical semantics. Bump alongside test tooling.
+  "compatibility_date": "2026-03-10",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Which trade config to load from verticals/<VERTICAL>.json.
+  // Model provider/id are swappable without code changes (CLAUDE.md).
+  "vars": {
+    "MODEL_PROVIDER": "workers-ai",
+    "MODEL_ID": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "VERTICAL": "plumbing",
+    // Simulator channel (x-channel header) bypasses Twilio signature checks,
+    // so it is opt-in: "true" only in .dev.vars / tests, never in production.
+    "ALLOW_SIMULATOR": "false"
+  },
+
+  // Workers AI, always fronted by AI Gateway (gateway id comes from the
+  // AI_GATEWAY_ID secret so it stays out of source control).
+  "ai": { "binding": "AI" },
+
+  "durable_objects": {
+    "bindings": [{ "name": "CONVERSATION", "class_name": "ConversationDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ConversationDO"] }],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "missed-call-agent",
+      // Placeholder for local dev; `pnpm setup` replaces it with the real id.
+      "database_id": "8a6ae173-774a-497b-905c-687e3d7e458b"
+    }
+  ],
+
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+}

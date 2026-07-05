@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "business": {
+    "name": "Example Electric",
+    "trade": "electrical",
+    "serviceArea": "San Diego County",
+    "ownerNotify": { "phone": "+15550000000" },
+    "hours": {
+      "timezone": "America/Los_Angeles",
+      "days": {
+        "mon": { "open": "07:30", "close": "17:30" },
+        "tue": { "open": "07:30", "close": "17:30" },
+        "wed": { "open": "07:30", "close": "17:30" },
+        "thu": { "open": "07:30", "close": "17:30" },
+        "fri": { "open": "07:30", "close": "17:30" },
+        "sat": null,
+        "sun": null
+      }
+    }
+  },
+  "services": [
+    "panel upgrade",
+    "outlet or switch repair",
+    "lighting install",
+    "EV charger install",
+    "whole-home rewiring",
+    "ceiling fan install",
+    "troubleshooting / power loss"
+  ],
+  "emergency": {
+    "scenarios": [
+      {
+        "id": "sparking_burning",
+        "label": "Sparking outlet / burning smell",
+        "signals": ["sparking", "sparks", "burning smell", "smoke", "smell burning"],
+        "lifeSafety": true
+      },
+      {
+        "id": "power_loss",
+        "label": "Partial or full power loss",
+        "signals": ["no power", "power out", "lost power", "half the house"]
+      },
+      {
+        "id": "exposed_wiring",
+        "label": "Exposed or damaged wiring",
+        "signals": ["exposed wire", "wires hanging", "downed line", "wire fell"],
+        "callerGuidance": "Don't touch any exposed wiring. If a line is down outside, stay well away from it."
+      }
+    ],
+    "escalation": {
+      "method": "sms_owner",
+      "ownerTemplate": "🚨 EMERGENCY LEAD: {scenario} — {summary}. Caller: {phone}. Reply or call them ASAP.",
+      "callerAck": "That sounds urgent — I've alerted our on-call electrician and someone will call you within a few minutes."
+    },
+    "afterHours": "escalate_and_set_expectation"
+  },
+  "qualification": [
+    { "id": "issue", "ask": "What's the electrical issue you're dealing with?", "purpose": "classify the service and check for emergency signals" },
+    { "id": "location", "ask": "What area are you in? Want to confirm you're in our service range.", "purpose": "service-area check" },
+    { "id": "timeline", "ask": "Do you need someone out today, or is this a project you're planning?", "purpose": "urgency and booking priority" },
+    { "id": "name", "ask": "Who do I have the pleasure of texting with?", "purpose": "lead record" }
+  ],
+  "policies": {
+    "quoting": "never",
+    "maxAgentMessages": 10,
+    "quietHours": { "start": "21:00", "end": "08:00" }
+  },
+  "voice": {
+    "tone": "Calm, professional, safety-first. Short texts, one question at a time.",
+    "firstMessage": "Hi, you've reached {businessName} — sorry we missed you! Tell me what's going on and I'll get you taken care of."
+  }
+}

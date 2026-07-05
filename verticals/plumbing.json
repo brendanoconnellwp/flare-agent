@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "business": {
+    "name": "Example Plumbing Co.",
+    "trade": "plumbing",
+    "serviceArea": "San Diego County",
+    "ownerNotify": { "phone": "+15550000000" },
+    "hours": {
+      "timezone": "America/Los_Angeles",
+      "days": {
+        "mon": { "open": "07:00", "close": "18:00" },
+        "tue": { "open": "07:00", "close": "18:00" },
+        "wed": { "open": "07:00", "close": "18:00" },
+        "thu": { "open": "07:00", "close": "18:00" },
+        "fri": { "open": "07:00", "close": "18:00" },
+        "sat": { "open": "08:00", "close": "14:00" },
+        "sun": null
+      }
+    }
+  },
+  "services": [
+    "burst or leaking pipe",
+    "water heater repair or replacement",
+    "drain cleaning / clog",
+    "sewer line",
+    "toilet repair or install",
+    "faucet and fixture install",
+    "repipe",
+    "slab leak detection"
+  ],
+  "emergency": {
+    "scenarios": [
+      {
+        "id": "burst_pipe",
+        "label": "Burst / actively leaking pipe",
+        "signals": ["burst", "flooding", "water everywhere", "water all over", "gushing", "pouring", "leaking bad"],
+        "callerGuidance": "If you can, shut off your main water valve — usually near the street or where the line enters the house."
+      },
+      {
+        "id": "sewage_backup",
+        "label": "Sewage backup",
+        "signals": ["sewage", "sewer backing up", "backup", "black water"],
+        "callerGuidance": "Avoid contact with the water and keep kids and pets away from the area."
+      },
+      {
+        "id": "no_water",
+        "label": "No water to the home",
+        "signals": ["no water", "water shut off", "nothing coming out"]
+      },
+      {
+        "id": "gas_water_heater",
+        "label": "Gas smell near water heater",
+        "signals": ["smell gas", "gas leak", "gas smell"],
+        "lifeSafety": true
+      }
+    ],
+    "escalation": {
+      "method": "sms_owner",
+      "ownerTemplate": "🚨 EMERGENCY LEAD: {scenario} — {summary}. Caller: {phone}. Reply or call them ASAP.",
+      "callerAck": "Got it — this sounds urgent. I've alerted our on-call plumber and someone will call you within a few minutes. Keep your phone handy."
+    },
+    "afterHours": "escalate_anyway"
+  },
+  "qualification": [
+    { "id": "issue", "ask": "What's going on with your plumbing?", "purpose": "classify the service and check for emergency signals" },
+    { "id": "location", "ask": "What's the address or neighborhood? Just making sure you're in our service area.", "purpose": "service-area check and dispatch info" },
+    { "id": "timeline", "ask": "Is this something you need handled today, or are you scheduling ahead?", "purpose": "urgency and booking priority" },
+    { "id": "name", "ask": "And who am I texting with?", "purpose": "lead record" }
+  ],
+  "policies": {
+    "quoting": "never",
+    "maxAgentMessages": 10,
+    "quietHours": { "start": "21:00", "end": "08:00" }
+  },
+  "voice": {
+    "tone": "Friendly, brief, competent dispatcher. Short texts, one question at a time, no emojis except in owner alerts.",
+    "firstMessage": "Hi, this is {businessName} — sorry we missed your call! I can get you helped fast. What's going on with your plumbing?"
+  }
+}
