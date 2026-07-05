@@ -3,13 +3,16 @@
 // small XML document.
 
 import { z } from "zod";
+import { isNanpPhone } from "../lib/phone";
 import type { Channel, InboundSms } from "./types";
 
+// Body cap: a real SMS tops out around 1600 chars; anything larger is not a
+// phone and gets a 400 before it reaches the engine or the model.
 export const TwilioSmsPayload = z.object({
-  From: z.string().min(1),
-  To: z.string().min(1),
-  Body: z.string(),
-  MessageSid: z.string().min(1),
+  From: z.string().min(1).max(32),
+  To: z.string().min(1).max(32),
+  Body: z.string().max(2048),
+  MessageSid: z.string().min(1).max(64),
 });
 export type TwilioSmsPayload = z.infer<typeof TwilioSmsPayload>;
 
@@ -76,6 +79,12 @@ export function renderVoiceScreenAcceptTwiml(): string {
 // Outbound SMS via the Twilio REST API — plain fetch, no SDK (the wire
 // format is one form-encoded POST).
 export async function sendSms(env: Env, to: string, body: string): Promise<void> {
+  // Toll-fraud backstop: never REST-send outside NANP, regardless of what a
+  // webhook claimed the caller was. Routes filter first; this catches any
+  // future code path that forgets to.
+  if (!isNanpPhone(to)) {
+    throw new Error(`refusing to send SMS to non-NANP number`);
+  }
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {
     method: "POST",
     headers: {

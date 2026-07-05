@@ -5,23 +5,37 @@
 import { z } from "zod";
 
 export const AgentTurn = z.object({
-  reply: z.string().min(1),
+  // Hard cap ~4 SMS segments: a prompt-injected or runaway model must not be
+  // able to emit arbitrarily long (and arbitrarily billed) outbound messages.
+  reply: z
+    .string()
+    .min(1)
+    .transform((s) => s.slice(0, 640)),
   state: z.object({
     // Models sometimes emit numbers/booleans/nulls as answer values; keep the
-    // usable ones as strings, drop the rest.
+    // usable ones as strings, drop the rest. Values are capped so a caller
+    // cannot smuggle essays (or scam copy) into lead records and owner alerts.
     answered: z
       .record(z.string(), z.unknown())
       .default({})
       .transform((rec) => {
         const out: Record<string, string> = {};
         for (const [key, value] of Object.entries(rec)) {
-          if (typeof value === "string" && value.trim() !== "") out[key] = value.trim();
-          else if (typeof value === "number" || typeof value === "boolean") out[key] = String(value);
+          if (typeof value === "string" && value.trim() !== "") out[key.slice(0, 64)] = value.trim().slice(0, 300);
+          else if (typeof value === "number" || typeof value === "boolean") out[key.slice(0, 64)] = String(value);
         }
         return out;
       }),
-    service: z.string().optional().catch(undefined),
-    summary: z.string().optional().catch(undefined),
+    service: z
+      .string()
+      .optional()
+      .catch(undefined)
+      .transform((s) => s?.slice(0, 120)),
+    summary: z
+      .string()
+      .optional()
+      .catch(undefined)
+      .transform((s) => s?.slice(0, 500)),
     // The model's urgency read for this turn. The engine treats it as
     // raise-only: it can never lower a deterministic keyword hit (spec M3).
     urgency: z.enum(["routine", "urgent", "emergency"]).optional().catch(undefined),

@@ -46,6 +46,9 @@ interface AgentState {
   scenarioId?: string;
   done: boolean;
   leadId?: string;
+  // Set once the maxAgentMessages wrap-up has been sent; after that the
+  // conversation goes silent instead of auto-replying forever.
+  budgetClosed?: boolean;
 }
 
 export class ConversationDO extends DurableObject<Env> {
@@ -275,9 +278,16 @@ export class ConversationDO extends DurableObject<Env> {
     // safety over helpfulness). Found in production; do not "optimize" this.
 
     // Engine-enforced message budget (policies.maxAgentMessages): capture
-    // whatever we have and hand off rather than texting forever.
+    // whatever we have, send ONE wrap-up, then go silent. Auto-replying to
+    // every further message would let a hostile texter run up per-message
+    // costs indefinitely (deterministic emergency signals above still work).
     if (this.countOutbound() >= config.policies.maxAgentMessages) {
+      if (state.budgetClosed) {
+        return [];
+      }
+      state.budgetClosed = true;
       await this.finalizeLead(conv, msg.from, state, config);
+      await this.ctx.storage.put("agentState", state);
       return [`Thanks — ${config.business.name} will follow up with you shortly.`];
     }
 

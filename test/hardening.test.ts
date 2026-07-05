@@ -90,6 +90,67 @@ describe("failure modes", () => {
     expect(byDirection).toEqual({ inbound: 2, outbound: 2 });
   });
 
+  it("never replies to non-NANP callers (SMS-pumping / toll-fraud guard)", async () => {
+    const smsRes = await SELF.fetch("https://example.com/webhook/sms", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", "x-channel": "simulator" },
+      body: new URLSearchParams({
+        From: "+4477009001234", // UK-shaped
+        To: "+15550009999",
+        Body: "water everywhere", // even a deterministic emergency signal
+        MessageSid: `SIM${crypto.randomUUID()}`,
+      }),
+    });
+    expect(smsRes.status).toBe(200);
+    expect(((await smsRes.json()) as { replies: string[] }).replies).toEqual([]);
+
+    const voiceRes = await SELF.fetch("https://example.com/webhook/voice-status", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", "x-channel": "simulator" },
+      body: new URLSearchParams({ From: "+4477009001234", CallSid: "CA_NANP_TEST", DialCallStatus: "no-answer" }),
+    });
+    expect(((await voiceRes.json()) as { replies: string[] }).replies).toEqual([]);
+  });
+
+  it("rejects oversized SMS bodies before they reach the engine", async () => {
+    const res = await SELF.fetch("https://example.com/webhook/sms", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", "x-channel": "simulator" },
+      body: new URLSearchParams({
+        From: "+15553330005",
+        To: "+15550009999",
+        Body: "x".repeat(5000),
+        MessageSid: `SIM${crypto.randomUUID()}`,
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("goes silent after the message budget: one wrap-up, then nothing", async () => {
+    const from = "+15553330006";
+    const max = plumbing.policies.maxAgentMessages; // 10
+
+    // Burn the budget with routine turns.
+    for (let i = 0; i < max; i++) {
+      await seedModel(routineTurn(`question ${i + 1}?`));
+      const { replies } = await sms(from, `message ${i + 1}`);
+      expect(replies).toHaveLength(1);
+    }
+
+    // Budget reached: exactly one wrap-up...
+    const wrapUp = await sms(from, "hello?");
+    expect(wrapUp.replies).toHaveLength(1);
+    expect(wrapUp.replies[0]).toContain("will follow up");
+
+    // ...then silence, no matter how many more messages arrive.
+    expect((await sms(from, "hello??")).replies).toEqual([]);
+    expect((await sms(from, "anyone there")).replies).toEqual([]);
+
+    // But compliance still works after the budget closes.
+    const stop = await sms(from, "STOP");
+    expect(stop.replies[0]).toContain("unsubscribed");
+  });
+
   it("replays every logged event without crashing", async () => {
     // The tests above logged real webhook events; add a voice-status event so
     // both replay paths are covered.

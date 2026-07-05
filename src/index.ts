@@ -15,9 +15,16 @@ import {
 } from "./channels/twilio";
 import type { Channel } from "./channels/types";
 import { loadConfig } from "./config/load";
+import { isNanpPhone } from "./lib/phone";
 import { ulid } from "./lib/ulid";
 
 const app = new Hono<{ Bindings: Env }>();
+
+// Never leak stack traces or internals to callers; the log gets the detail.
+app.onError((err, c) => {
+  console.error(JSON.stringify({ event: "unhandled_error", path: c.req.path, error: String(err) }));
+  return c.text("Internal error", 500);
+});
 
 // Hard rule 8: every inbound webhook payload is logged so production
 // conversations are replayable as local fixtures. Off the hot path.
@@ -75,6 +82,14 @@ app.post("/webhook/sms", async (c) => {
   // Source names the event TYPE + channel so --replay can route the payload
   // back to the right webhook.
   c.executionCtx.waitUntil(logEvent(c.env, channel === "simulator" ? "simulator_sms" : "twilio_sms", parsed.data));
+
+  // SMS-pumping / toll-fraud guard: non-NANP callers are logged but never
+  // answered — an auto-reply to a premium-rate number is the attack.
+  if (!isNanpPhone(msg.from)) {
+    return channel === "simulator"
+      ? c.json(renderSimulatorReply([]))
+      : c.body(renderTwiml([]), 200, { "Content-Type": "text/xml" });
+  }
 
   const stub = c.env.CONVERSATION.getByName(msg.from);
   const { replies, heldUntil } = await stub.handleInbound(msg);
@@ -147,8 +162,9 @@ app.post("/webhook/voice-status", async (c) => {
 
   let replies: string[] = [];
   let heldUntil: number | undefined;
-  if (missed) {
-    const from = parsed.data.From.trim();
+  const from = parsed.data.From.trim();
+  // Same toll-fraud guard as /webhook/sms: no text-backs outside NANP.
+  if (missed && isNanpPhone(from)) {
     ({ replies, heldUntil } = await c.env.CONVERSATION.getByName(from).missedCall(from, channel));
   }
 
