@@ -5,6 +5,10 @@
 # set this in production.
 ALLOW_SIMULATOR="true"
 
+# Enables the read-only owner dashboard at /dashboard?token=<value>. Leave
+# empty to keep the dashboard disabled (routes 404). Use a long random string.
+DASHBOARD_TOKEN=""
+
 # Twilio (not needed until M4 — the simulator covers M0–M3)
 TWILIO_ACCOUNT_SID=""
 TWILIO_AUTH_TOKEN=""

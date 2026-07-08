@@ -25,6 +25,7 @@ export default defineWorkersConfig(async () => {
               // src/agent/provider.ts.
               MODEL_PROVIDER: "mock",
               ALLOW_SIMULATOR: "true",
+              DASHBOARD_TOKEN: "test-dashboard-token",
               // Fast model-timeout so the hang-fallback test runs in ms.
               MODEL_TIMEOUT_MS: "150",
               // Pin the policy clock to midday Pacific (noon PDT) so

@@ -15,6 +15,15 @@ import {
 } from "./channels/twilio";
 import type { Channel } from "./channels/types";
 import { loadConfig } from "./config/load";
+import {
+  renderDashboard,
+  renderTranscript,
+  type DashConversation,
+  type DashLead,
+  type DashMessage,
+  type DashNotification,
+} from "./dashboard/render";
+import { constantTimeEqual } from "./lib/constant-time";
 import { isNanpPhone } from "./lib/phone";
 import { ulid } from "./lib/ulid";
 
@@ -217,6 +226,78 @@ app.post("/sim/complete", async (c) => {
   }
   const text = await createProvider(c.env).complete(parsed.data.messages);
   return c.json({ text });
+});
+
+// ---------------------------------------------------------------------------
+// Read-only owner dashboard. Off by default: without a DASHBOARD_TOKEN secret
+// the routes 404. Auth is the token, either once as ?token= (which sets an
+// HttpOnly cookie and redirects to a clean URL) or via that cookie.
+
+const DASH_HEADERS = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" };
+
+function dashboardAuth(c: AppContext): Response | null {
+  const token = (c.env as { DASHBOARD_TOKEN?: string }).DASHBOARD_TOKEN;
+  if (!token) return c.text("Not found", 404); // dashboard disabled: no token secret configured
+
+  const provided = c.req.query("token");
+  if (provided !== undefined) {
+    if (!constantTimeEqual(provided, token)) return c.text("Invalid token", 403);
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: "/dashboard",
+        "Set-Cookie": `dash=${token}; HttpOnly; Secure; SameSite=Lax; Path=/dashboard; Max-Age=2592000`,
+      },
+    });
+  }
+
+  const cookie = (c.req.header("cookie") ?? "").match(/(?:^|;\s*)dash=([^;]+)/)?.[1];
+  if (cookie && constantTimeEqual(cookie, token)) return null; // authorized
+  return c.text("Unauthorized. Open /dashboard?token=<DASHBOARD_TOKEN> once to sign in.", 401);
+}
+
+app.get("/dashboard", async (c) => {
+  const denied = dashboardAuth(c);
+  if (denied) return denied;
+  const config = loadConfig(c.env.VERTICAL);
+
+  const [leads, conversations, notifications] = await Promise.all([
+    c.env.DB.prepare(
+      "SELECT created_at, caller_name, caller_phone, service, urgency, location, summary, status FROM leads ORDER BY created_at DESC LIMIT 50"
+    ).all<DashLead>(),
+    c.env.DB.prepare(
+      `SELECT c.id, c.caller_phone, c.status, c.urgency, c.scenario_id, c.last_message_at,
+              (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) AS message_count
+       FROM conversations c ORDER BY c.last_message_at DESC LIMIT 50`
+    ).all<DashConversation>(),
+    c.env.DB.prepare("SELECT created_at, body FROM notifications ORDER BY created_at DESC LIMIT 20").all<DashNotification>(),
+  ]);
+
+  return c.body(renderDashboard(config, leads.results, conversations.results, notifications.results), 200, DASH_HEADERS);
+});
+
+app.get("/dashboard/c/:id", async (c) => {
+  const denied = dashboardAuth(c);
+  if (denied) return denied;
+  const config = loadConfig(c.env.VERTICAL);
+
+  const id = c.req.param("id");
+  const conversation = await c.env.DB.prepare(
+    `SELECT c.id, c.caller_phone, c.status, c.urgency, c.scenario_id, c.last_message_at,
+            (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) AS message_count
+     FROM conversations c WHERE c.id = ?`
+  )
+    .bind(id)
+    .first<DashConversation>();
+  if (!conversation) return c.notFound();
+
+  const messages = await c.env.DB.prepare(
+    "SELECT direction, body, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at, id"
+  )
+    .bind(id)
+    .all<DashMessage>();
+
+  return c.body(renderTranscript(config, conversation, messages.results), 200, DASH_HEADERS);
 });
 
 export default app;

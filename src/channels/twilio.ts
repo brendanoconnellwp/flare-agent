@@ -3,6 +3,7 @@
 // small XML document.
 
 import { z } from "zod";
+import { constantTimeEqual } from "../lib/constant-time";
 import { isNanpPhone } from "../lib/phone";
 import type { Channel, InboundSms } from "./types";
 
@@ -114,14 +115,4 @@ export async function validateTwilioSignature(
   const mac = await crypto.subtle.sign("HMAC", key, enc.encode(data));
   const expected = btoa(String.fromCharCode(...new Uint8Array(mac)));
   return constantTimeEqual(expected, signature);
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-  const enc = new TextEncoder();
-  const ab = enc.encode(a);
-  const bb = enc.encode(b);
-  if (ab.length !== bb.length) return false;
-  let diff = 0;
-  for (let i = 0; i < ab.length; i++) diff |= ab[i]! ^ bb[i]!;
-  return diff === 0;
 }

@@ -39,6 +39,16 @@ All Twilio webhooks are signature-validated (`X-Twilio-Signature`); requests tha
 
 Replay any logged production event locally: `pnpm chat --replay <event-id> --remote` (event ids live in the `events` table).
 
+## Owner dashboard (optional)
+
+A read-only dashboard at `/dashboard` shows leads, conversations (with full transcripts), and owner alerts. It is **disabled unless a `DASHBOARD_TOKEN` secret exists** — set one (`wrangler secret put DASHBOARD_TOKEN`, any long random string), then open:
+
+```
+https://<your-worker>/dashboard?token=<DASHBOARD_TOKEN>
+```
+
+That signs the browser in with an HttpOnly cookie; bookmark the clean `/dashboard` URL after. Auth uses constant-time comparison, all caller/model text is HTML-escaped, and responses are `no-store`.
+
 ## Configure your business
 
 1. Copy a vertical config, e.g. `verticals/plumbing.json`, or write a new one for your trade.
